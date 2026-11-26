@@ -1,0 +1,18 @@
+diff --git a/libats/libc/CATS/sys/types.cats b/libats/libc/CATS/sys/types.cats
+index 2abd7eb..9f6eb63 100644
+--- a/libats/libc/CATS/sys/types.cats
++++ b/libats/libc/CATS/sys/types.cats
+@@ -75,8 +75,13 @@ typedef off_t atslib_libats_libc_off_type ;
+ /* ****** ****** */
+ 
+ typedef pid_t atslib_libats_libc_pid_type ;
++#if defined(_WIN32)
++typedef unsigned int atslib_libats_libc_uid_type ;
++typedef unsigned int atslib_libats_libc_gid_type ;
++#else
+ typedef uid_t atslib_libats_libc_uid_type ;
+ typedef gid_t atslib_libats_libc_gid_type ;
++#endif
+ 
+ /* ****** ****** */
+ 

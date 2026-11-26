@@ -1,0 +1,105 @@
+--- a/src/pats_filename.dats
++++ b/src/pats_filename.dats
+@@ -342,6 +342,11 @@
+ givename_is_relative
+   (given: string): bool
+ //
++extern
++fun
++givename_is_windows_absolute
++  (given: string): bool = "ext#patsopt_filename_is_windows_absolute"
++//
+ implement
+ givename_is_relative
+   (given) = let
+@@ -364,13 +369,14 @@
+   // end of [if]
+ end // end of [aux]
+ //
+-val given = 
++val winabs = givename_is_windows_absolute (given)
++val given =
+   string1_of_string (given)
+ //
+ val dirsep = theDirSep_get ()
+ //
+ in
+-  aux (given, 0, dirsep)
++  if winabs then false else aux (given, 0, dirsep)
+ end // [givename_is_relative]
+ //
+ (* ****** ****** *)
+@@ -1679,6 +1685,27 @@
+ 
+ %{$
+ 
++/* Windows absolute paths are not recognized by ATS2's POSIX-only check.
++ * Without this guard, C:\\... is prefixed with getcwd(), yielding
++ * C:/cwd/C:\\.../prelude/params.hats and fopen(EINVAL).
++ * Recognize drive-rooted, current-drive-rooted and UNC paths.  C:relative
++ * remains relative (as required by Win32 path semantics).
++ */
++ats_bool_type
++patsopt_filename_is_windows_absolute (ats_ptr_type name) {
++#ifdef _WIN32
++  const unsigned char *s = (const unsigned char *)name;
++  if (s[0] == '\\' || s[0] == '/') return ats_true_bool;
++  if (((s[0] >= 'A' && s[0] <= 'Z') ||
++       (s[0] >= 'a' && s[0] <= 'z')) &&
++      s[1] == ':' && (s[2] == '\\' || s[2] == '/'))
++    return ats_true_bool;
++#else
++  (void)name;
++#endif
++  return ats_false_bool;
++}
++
+ ats_ptr_type
+ patsopt_filename_merge
+ (
+--- a/src/CBOOT/pats_filename_dats.c
++++ b/src/CBOOT/pats_filename_dats.c
+@@ -200,6 +200,7 @@
+ ATSextern_fun(ats_void_type, _2tmp_2ATS_2dPostiats_2src_2pats_filename_2esats__fprint_filename_full) (ats_ptr_type, ats_ptr_type) ;
+ ATSextern_fun(ats_ptr_type, patsopt_filename_merge) (ats_ptr_type, ats_ptr_type) ;
+ ATSextern_fun(ats_ptr_type, patsopt_filename_dirbase) (ats_ptr_type, ats_ptr_type) ;
++ATSextern_fun(ats_bool_type, patsopt_filename_is_windows_absolute) (ats_ptr_type) ;
+ ATSextern_fun(ats_bool_type, _2tmp_2ATS_2dPostiats_2src_2pats_filename_2esats__eq_filename_filename) (ats_ptr_type, ats_ptr_type) ;
+ ATSextern_val(ats_ptr_type, _2tmp_2ATS_2dPostiats_2src_2pats_filename_2esats__filename_dummy) ;
+ ATSextern_fun(ats_bool_type, _2tmp_2ATS_2dPostiats_2src_2pats_filename_2esats__filename_isnot_dummy) (ats_ptr_type) ;
+@@ -1009,6 +1010,7 @@
+ ATSlocal (ats_char_type, tmp58) ;
+ 
+ __ats_lab__2tmp_2ATS_2dPostiats_2src_2pats_filename_2edats__givename_is_relative:
++if (patsopt_filename_is_windows_absolute(arg0)) return ats_false_bool ;
+ tmp58 = patsopt_filename_theDirSep_get () ;
+ tmp54 = aux_20 (ats_castfn_mac(ats_ptr_type, arg0), 0, tmp58) ;
+ return (tmp54) ;
+@@ -2996,6 +2998,27 @@
+ /* external codes at bot */
+ 
+ 
++/* Windows absolute paths are not recognized by ATS2's POSIX-only check.
++ * Without this guard, C:\\... is prefixed with getcwd(), yielding
++ * C:/cwd/C:\\.../prelude/params.hats and fopen(EINVAL).
++ * Recognize drive-rooted, current-drive-rooted and UNC paths.  C:relative
++ * remains relative (as required by Win32 path semantics).
++ */
++ats_bool_type
++patsopt_filename_is_windows_absolute (ats_ptr_type name) {
++#ifdef _WIN32
++  const unsigned char *s = (const unsigned char *)name;
++  if (s[0] == '\\' || s[0] == '/') return ats_true_bool;
++  if (((s[0] >= 'A' && s[0] <= 'Z') ||
++       (s[0] >= 'a' && s[0] <= 'z')) &&
++      s[1] == ':' && (s[2] == '\\' || s[2] == '/'))
++    return ats_true_bool;
++#else
++  (void)name;
++#endif
++  return ats_false_bool;
++}
++
+ ats_ptr_type
+ patsopt_filename_merge
+ (

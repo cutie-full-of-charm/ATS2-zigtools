@@ -1,0 +1,19 @@
+diff --git a/libats/libc/CATS/stdlib.cats b/libats/libc/CATS/stdlib.cats
+--- a/libats/libc/CATS/stdlib.cats
++++ b/libats/libc/CATS/stdlib.cats
+@@ -145,5 +145,15 @@
+ #define atslib_libats_libc_seed48 seed48
++#if defined(_WIN32)
++extern void atslib_libats_win_srand48(long int);
++extern double atslib_libats_win_drand48(void);
++#define atslib_libats_libc_srand48 atslib_libats_win_srand48
++#else
+ #define atslib_libats_libc_srand48 srand48
++#endif
+ //
++#if defined(_WIN32)
++#define atslib_libats_libc_drand48 atslib_libats_win_drand48
++#else
+ #define atslib_libats_libc_drand48 drand48
++#endif
+ #define atslib_libats_libc_erand48 erand48

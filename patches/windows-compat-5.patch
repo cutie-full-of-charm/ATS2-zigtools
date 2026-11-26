@@ -1,0 +1,90 @@
+diff --git a/libats/libc/CATS/fcntl.cats b/libats/libc/CATS/fcntl.cats
+--- a/libats/libc/CATS/fcntl.cats
++++ b/libats/libc/CATS/fcntl.cats
+@@ -40,10 +40,15 @@
+ 
+ /* ****** ****** */
+ 
+ #include <sys/types.h>
+ #include <fcntl.h> // HX: after sys/types
++#if defined(_WIN32)
++#include <io.h>
++extern int atslib_libats_win_fildes_iget_int(int fd);
++extern int atslib_libats_win_dup2_fildes(int fd, int dst);
++#endif
+ 
+ /* ****** ****** */
+ 
+ #define atslib_libats_libc_fildes_get_int(fd) (fd)
+ 
+@@ -69,14 +74,21 @@
+ #define \
+ atslib_libats_libc_fcntl_setfl(fd, flags) fcntl(fd, F_SETFL, flags)
+ 
+ /* ****** ****** */
+ 
++#if defined(_WIN32)
++#define \
++atslib_libats_libc_open_flags(path, flags) _open((char*)path, (flags) | _O_BINARY)
++#define \
++atslib_libats_libc_open_flags_mode(path, flags, mode) _open((char*)path, (flags) | _O_BINARY, mode)
++#else
+ #define \
+ atslib_libats_libc_open_flags(path, flags) open((char*)path, flags)
+ #define \
+ atslib_libats_libc_open_flags_mode(path, flags, mode) open((char*)path, flags, mode)
++#endif
+ 
+ /* ****** ****** */
+ 
+ #endif // ifndef ATSLIB_LIBATS_LIBC_CATS_FCNTL
+ 
+diff --git a/libats/libc/DATS/fcntl.dats b/libats/libc/DATS/fcntl.dats
+--- a/libats/libc/DATS/fcntl.dats
++++ b/libats/libc/DATS/fcntl.dats
+@@ -52,14 +52,18 @@
+ atstype_int
+ atslib_libats_libc_fildes_iget_int
+ (
+   atstype_int fd
+ ) {
++#if defined(_WIN32)
++  return atslib_libats_win_fildes_iget_int(fd);
++#else
+   int flags ;
+   flags = fcntl (fd, F_GETFD) ;
+   if (flags < 0) return -1 ; // [fd2] not in use
+   return fd ;
++#endif
+ } // end of [atslib_libats_libc_fildes_iget_int]
+ %}
+ 
+ (* ****** ****** *)
+ 
+diff --git a/libats/libc/DATS/unistd.dats b/libats/libc/DATS/unistd.dats
+--- a/libats/libc/DATS/unistd.dats
++++ b/libats/libc/DATS/unistd.dats
+@@ -74,19 +74,23 @@
+ atstype_int
+ atslib_libats_libc_dup2_fildes
+ (
+   atstype_int fd, atstype_int fd2
+ ) {
++#if defined(_WIN32)
++  return atslib_libats_win_dup2_fildes(fd, fd2);
++#else
+   int flags ;
+ //
+   flags = fcntl(fd, F_GETFD) ;
+ //
+   if (flags >= 0) {
+     errno = EINVAL ; return -1 ; // [fd2] in use
+   } /* end of [if] */
+ //
+   return atslib_libats_libc_dup2(fd, fd2) ;
++#endif
+ //
+ } /* end of [atslib_libats_libc_dup2_fildes] */
+ %}
+ 
+ (* ****** ****** *)

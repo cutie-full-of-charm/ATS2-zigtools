@@ -1,0 +1,128 @@
+diff --git a/libats/libc/CATS/dirent.cats b/libats/libc/CATS/dirent.cats
+--- a/libats/libc/CATS/dirent.cats
++++ b/libats/libc/CATS/dirent.cats
+@@ -38,12 +38,16 @@
+ #ifndef ATSLIB_LIBATS_LIBC_CATS_DIRENT
+ #define ATSLIB_LIBATS_LIBC_CATS_DIRENT
+ 
+ /* ****** ****** */
+ 
++#if defined(_WIN32)
++#include "ats2_win_dirent.h"
++#else
+ #include <sys/types.h>
+ #include <dirent.h> // HX: after sys/types
++#endif
+ 
+ /* ****** ****** */
+ 
+ #include "share/H/pats_atslib.h"
+ 
+@@ -79,39 +83,63 @@
+ #define atslib_libats_libc_alphasort alphasort
+ #define atslib_libats_libc_versionsort versionsort
+ 
+ /* ****** ****** */
+ 
++#if defined(_WIN32)
++#define atslib_libats_libc_opendir atslib_win_opendir
++#else
+ #define atslib_libats_libc_opendir opendir
++#endif
+ 
+ /* ****** ****** */
+ 
++#if defined(_WIN32)
++#define atslib_libats_libc_closedir atslib_win_closedir
++#else
+ #define atslib_libats_libc_closedir closedir
++#endif
+ 
+ /* ****** ****** */
+ 
++#if defined(_WIN32)
++#define atslib_libats_libc_readdir atslib_win_readdir
++#define \
++atslib_libats_libc_readdir_r(dirp, ent, res) \
++  atslib_win_readdir_r((DIR*)dirp, (struct dirent*)ent, (struct dirent**)res)
++#else
+ #define \
+ atslib_libats_libc_readdir readdir
+ #define \
+ atslib_libats_libc_readdir_r(dirp, ent, res) \
+   readdir_r((DIR*)dirp, (struct dirent*)ent, (struct dirent**)res)
++#endif
+ 
+ /* ****** ****** */
+ 
+ #define \
+ atslib_libats_libc_scandir(dirp, namelst, filter, compar) \
+   scandir((char*)dirp, (struct dirent***)namelst, (void*)filter, (void*)compar)
+ 
+ /* ****** ****** */
+ 
++#if defined(_WIN32)
++#define atslib_libats_libc_rewinddir atslib_win_rewinddir
++#else
+ #define \
+ atslib_libats_libc_rewinddir rewinddir
++#endif
+ 
+ /* ****** ****** */
+ 
++#if defined(_WIN32)
++#define atslib_libats_libc_seekdir atslib_win_seekdir
++#define atslib_libats_libc_telldir atslib_win_telldir
++#else
+ #define atslib_libats_libc_seekdir seekdir
+ #define atslib_libats_libc_telldir telldir
++#endif
+ 
+ /* ****** ****** */
+ 
+ #endif // ifndef ATSLIB_LIBATS_LIBC_CATS_DIRENT
+ 
+diff --git a/libats/libc/DATS/dirent.dats b/libats/libc/DATS/dirent.dats
+--- a/libats/libc/DATS/dirent.dats
++++ b/libats/libc/DATS/dirent.dats
+@@ -54,11 +54,11 @@
+ //
+ (* ****** ****** *)
+ //
+ implement
+ {}(*tmp*)
+-dirent$PC_NAME_MAX((*void*)) = 256
++dirent$PC_NAME_MAX((*void*)) = 1024
+ //
+ (* ****** ****** *)
+ 
+ implement
+ {}(*tmp*)
+@@ -115,12 +115,12 @@
+ atstype_ptr
+ atslib_libats_libc_opendir_exn
+ (
+   atstype_string dname
+ ) {
+-  DIR *dirp ;
+-  dirp = opendir((char*)dname) ;
++  atslib_libats_libc_DIR_type *dirp ;
++  dirp = atslib_libats_libc_opendir((char*)dname) ;
+   if (!dirp) ATSLIBfailexit("opendir") ;
+   return dirp ; // [opendir] succeeded
+ } // end of [atslib_libats_libc_opendir_exn]
+ %}
+ 
+@@ -131,11 +131,11 @@
+ atsvoid_t0ype
+ atslib_libats_libc_closedir_exn
+ (
+   atstype_ptr dirp
+ ) {
+-  int err = closedir((DIR*)dirp) ;
++  int err = atslib_libats_libc_closedir((atslib_libats_libc_DIR_type*)dirp) ;
+   if (err < 0) ATSLIBfailexit("closedir") ;
+   return ; // [closedir] succeeded
+ } // end of [atslib_libats_libc_closedir_exn]
+ %}
+ 

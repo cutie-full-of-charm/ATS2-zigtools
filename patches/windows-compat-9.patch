@@ -1,0 +1,20 @@
+diff --git a/libats/libc/DATS/unistd.dats b/libats/libc/DATS/unistd.dats
+--- a/libats/libc/DATS/unistd.dats
++++ b/libats/libc/DATS/unistd.dats
+@@ -81,12 +81,15 @@
+ #else
+   int flags ;
+ //
+-  flags = fcntl(fd, F_GETFD) ;
++  if (fd2 < 0) { errno = EBADF; return -1; }
++  if (fcntl(fd, F_GETFD) < 0) return -1;
++  flags = fcntl(fd2, F_GETFD) ;
+ //
+   if (flags >= 0) {
+     errno = EINVAL ; return -1 ; // [fd2] in use
+   } /* end of [if] */
+ //
++  if (errno != EBADF) return -1;
+   return atslib_libats_libc_dup2(fd, fd2) ;
+ #endif
+ //

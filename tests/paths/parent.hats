@@ -1,0 +1,1 @@
+#define PATH_TEST_VALUE 42

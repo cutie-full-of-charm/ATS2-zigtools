@@ -1,0 +1,52 @@
+diff --git a/libats/libc/CATS/unistd.cats b/libats/libc/CATS/unistd.cats
+--- a/libats/libc/CATS/unistd.cats
++++ b/libats/libc/CATS/unistd.cats
+@@ -48,6 +48,10 @@
+ #include <limits.h>
+ #include <stddef.h>
+ #include <stdint.h>
++extern int atslib_libats_win_getlogin_r(char *buffer, size_t size);
++extern int atslib_libats_win_link(const char *existing, const char *new_name);
++extern int atslib_libats_win_symlink(const char *target, const char *link_name);
++extern intptr_t atslib_libats_win_readlink(const char *link_name, void *buffer, size_t size);
+ static inline int atslib_libats_win_close(int fd) {
+   if (fd < 0) { errno = EBADF; return -1; }
+   return _close(fd);
+@@ -143,7 +147,11 @@
+ /* ****** ****** */
+ 
+ #define atslib_libats_libc_getlogin getlogin
++#if defined(_WIN32)
++#define atslib_libats_libc_getlogin_r atslib_libats_win_getlogin_r
++#else
+ #define atslib_libats_libc_getlogin_r getlogin_r
++#endif
+ 
+ /* ****** ****** */
+ 
+@@ -225,7 +233,11 @@
+ 
+ /* ****** ****** */
+ 
++#if defined(_WIN32)
++#define atslib_libats_libc_link atslib_libats_win_link
++#else
+ #define atslib_libats_libc_link link
++#endif
+ #if defined(_WIN32)
+ #define atslib_libats_libc_unlink _unlink
+ #else
+@@ -234,8 +246,13 @@
+ 
+ /* ****** ****** */
+ 
++#if defined(_WIN32)
++#define atslib_libats_libc_symlink atslib_libats_win_symlink
++#define atslib_libats_libc_readlink atslib_libats_win_readlink
++#else
+ #define atslib_libats_libc_symlink symlink
+ #define atslib_libats_libc_readlink readlink
++#endif
+ 
+ /* ****** ****** */
+ 

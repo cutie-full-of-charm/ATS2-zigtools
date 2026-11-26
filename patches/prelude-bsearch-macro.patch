@@ -1,0 +1,15 @@
+Avoid expanding a libc bsearch macro in the ATS function declaration.
+
+--- a/prelude/CATS/array.cats
++++ b/prelude/CATS/array.cats
+@@ -56,6 +56,10 @@
+   void *base, size_t nmemb, size_t size
+ , int(*compar)(const void *, const void *)
+ ) ; // end of [qsort]
++/* Newer libc headers may expose bsearch as a C type-generic macro. */
++#ifdef bsearch
++#undef bsearch
++#endif
+ extern
+ void *bsearch
+ (

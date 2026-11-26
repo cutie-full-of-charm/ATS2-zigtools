@@ -1,0 +1,44 @@
+--- a/libats/libc/CATS/sys/socket.cats
++++ b/libats/libc/CATS/sys/socket.cats
+@@ -39,6 +39,10 @@
+ ATSLIB_LIBATS_LIBC_CATS_SYS_SOCKET
+ #define \
+ ATSLIB_LIBATS_LIBC_CATS_SYS_SOCKET
++
++#if defined(_WIN32)
++#error "ATS2 legacy sys/socket uses int socket handles; use compat/net/ats2_net_socket.h"
++#else
+ 
+ /* ****** ****** */
+ //
+@@ -128,6 +132,8 @@
+ 
+ /* ****** ****** */
+ 
++#endif // ifndef _WIN32
++
+ #endif // ifndef ATSLIB_LIBATS_LIBC_CATS_SYS_SOCKET
+ 
+ /* ****** ****** */
+--- a/libats/libc/CATS/sys/socket_in.cats
++++ b/libats/libc/CATS/sys/socket_in.cats
+@@ -40,6 +40,10 @@
+ #define \
+ ATSLIB_LIBATS_LIBC_CATS_SYS_SOCKET_IN
+ 
++#if defined(_WIN32)
++#error "ATS2 legacy sys/socket_in uses int socket handles; use compat/net/ats2_net_socket.h"
++#else
++
+ /* ****** ****** */
+ //
+ #include <sys/socket.h>
+@@ -71,6 +75,8 @@
+ 
+ /* ****** ****** */
+ 
++#endif // ifndef _WIN32
++
+ #endif // ifndef ATSLIB_LIBATS_LIBC_CATS_SYS_SOCKET_IN
+ 
+ /* ****** ****** */

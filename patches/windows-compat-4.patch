@@ -1,0 +1,156 @@
+--- a/libats/libc/CATS/unistd.cats
++++ b/libats/libc/CATS/unistd.cats
+@@ -40,11 +40,65 @@
+ 
+ /* ****** ****** */
+ 
++#if defined(_WIN32)
++#include <io.h>
++#include <direct.h>
++#include <process.h>
++#include <errno.h>
++#include <limits.h>
++#include <stddef.h>
++#include <stdint.h>
++static inline int atslib_libats_win_close(int fd) {
++  if (fd < 0) { errno = EBADF; return -1; }
++  return _close(fd);
++}
++
++static inline int atslib_libats_win_dup(int fd) {
++  if (fd < 0) { errno = EBADF; return -1; }
++  return _dup(fd);
++}
++
++static inline int atslib_libats_win_dup2(int fd, int dest) {
++  if (fd < 0 || dest < 0) { errno = EBADF; return -1; }
++  return _dup2(fd, dest) == 0 ? dest : -1;
++}
++
++static inline intptr_t atslib_libats_win_read(int fd, void *buf, size_t count) {
++  if (fd < 0) { errno = EBADF; return -1; }
++  if (count > INT_MAX) { errno = EINVAL; return -1; }
++  if (count != 0 && buf == NULL) { errno = EINVAL; return -1; }
++  return (intptr_t)_read(fd, buf, (unsigned int)count);
++}
++
++static inline intptr_t atslib_libats_win_write(int fd, const void *buf, size_t count) {
++  if (fd < 0) { errno = EBADF; return -1; }
++  if (count > INT_MAX) { errno = EINVAL; return -1; }
++  if (count != 0 && buf == NULL) { errno = EINVAL; return -1; }
++  return (intptr_t)_write(fd, buf, (unsigned int)count);
++}
++
++static inline char *atslib_libats_win_getcwd(char *buf, size_t size) {
++  if (buf == NULL) { errno = EINVAL; return NULL; }
++  if (size == 0 || size > INT_MAX) { errno = ERANGE; return NULL; }
++  char *result = _getcwd(buf, (int)size);
++  if (result != NULL) {
++    for (char *p = result; *p != '\0'; ++p) {
++      if (*p == '\\') *p = '/';
++    }
++  }
++  return result;
++}
++#else
+ #include <unistd.h>
++#endif
+ 
+ /* ****** ****** */
+ 
++#if defined(_WIN32)
++#define atslib_libats_libc_close atslib_libats_win_close
++#else
+ #define atslib_libats_libc_close close
++#endif
+ #define atslib_libats_libc_close0 atslib_libats_libc_close
+ #define atslib_libats_libc_close1 atslib_libats_libc_close
+ #define atslib_libats_libc_close0_exn atslib_libats_libc_close_exn
+@@ -52,9 +106,15 @@
+ 
+ /* ****** ****** */
+ 
++#if defined(_WIN32)
++#define atslib_libats_libc_dup atslib_libats_win_dup
++#define atslib_libats_libc_dup_fildes atslib_libats_win_dup
++#define atslib_libats_libc_dup2 atslib_libats_win_dup2
++#else
+ #define atslib_libats_libc_dup dup
+ #define atslib_libats_libc_dup_fildes dup
+ #define atslib_libats_libc_dup2 dup2
++#endif
+ #define atslib_libats_libc_dup3 dup3
+ 
+ /* ****** ****** */
+@@ -72,7 +132,13 @@
+ 
+ /* ****** ****** */
+ 
++#if defined(_WIN32)
++#define atslib_libats_libc_getcwd atslib_libats_win_getcwd
++#define atslib_libats_libc_chdir _chdir
++#else
+ #define atslib_libats_libc_getcwd getcwd
++#define atslib_libats_libc_chdir chdir
++#endif
+ 
+ /* ****** ****** */
+ 
+@@ -81,7 +147,11 @@
+ 
+ /* ****** ****** */
+ 
++#if defined(_WIN32)
++#define atslib_libats_libc_getpid _getpid
++#else
+ #define atslib_libats_libc_getpid getpid
++#endif
+ #define atslib_libats_libc_getppid getppid
+ 
+ /* ****** ****** */
+@@ -116,8 +186,13 @@
+ 
+ /* ****** ****** */
+ 
++#if defined(_WIN32)
++#define atslib_libats_libc_read_err atslib_libats_win_read
++#define atslib_libats_libc_write_err atslib_libats_win_write
++#else
+ #define atslib_libats_libc_read_err read
+ #define atslib_libats_libc_write_err write
++#endif
+ 
+ /* ****** ****** */
+ 
+@@ -142,12 +217,20 @@
+ 
+ /* ****** ****** */
+ 
++#if defined(_WIN32)
++#define atslib_libats_libc_rmdir _rmdir
++#else
+ #define atslib_libats_libc_rmdir rmdir
++#endif
+ 
+ /* ****** ****** */
+ 
+ #define atslib_libats_libc_link link
++#if defined(_WIN32)
++#define atslib_libats_libc_unlink _unlink
++#else
+ #define atslib_libats_libc_unlink unlink
++#endif
+ 
+ /* ****** ****** */
+ 
+--- a/libats/libc/SATS/unistd.sats
++++ b/libats/libc/SATS/unistd.sats
+@@ -199,6 +199,8 @@
+ 
+ fun fork ((*void*)): pid_t = "mac#%"
+ 
++fun chdir (path: NSH(string)): int = "mac#%"
++
+ (* ****** ****** *)
+ //
+ dataview

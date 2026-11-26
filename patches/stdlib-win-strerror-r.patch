@@ -1,0 +1,17 @@
+--- a/libats/libc/CATS/string.cats
++++ b/libats/libc/CATS/string.cats
+@@ -108,4 +108,14 @@
+ #define atslib_libats_libc_strerror strerror
++#if defined(_WIN32)
++static inline int atslib_libats_win_strerror_r(int errnum, char *buf, size_t buflen)
++{
++  int rc = strerror_s(buf, buflen, errnum);
++  if (rc != 0) errno = rc;
++  return rc;
++}
++#define atslib_libats_libc_strerror_r atslib_libats_win_strerror_r
++#else
+ #define atslib_libats_libc_strerror_r strerror_r
++#endif
+ 
+ /* ****** ****** */

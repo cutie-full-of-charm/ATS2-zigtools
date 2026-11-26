@@ -1,0 +1,10 @@
+/.zig-cache/
+/zig-out*/
+/ats2/
+/windows-test-results*/
+/stage*-results/
+*.rej
+*.orig
+*.tmp
+*.log
+__pycache__/

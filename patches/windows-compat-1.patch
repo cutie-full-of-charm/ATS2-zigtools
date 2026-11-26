@@ -1,0 +1,277 @@
+diff --git a/src/CBOOT/ccomp/runtime/ats_memory.h b/src/CBOOT/ccomp/runtime/ats_memory.h
+index 0db92ad..6588f1b 100644
+--- a/src/CBOOT/ccomp/runtime/ats_memory.h
++++ b/src/CBOOT/ccomp/runtime/ats_memory.h
+@@ -45,10 +45,17 @@
+ /* ****** ****** */
+ //
+ // HX: the function [alloca] is declared in
+-extern void *alloca (size_t nsz) ; // [alloca.h] or [stdlib.h]
+ 
+-#define ATS_ALLOCA(sz) alloca(sz)
+-#define ATS_ALLOCA2(n, sz) alloca((n)*(sz))
++#if defined(_WIN32)
++	#define ATS_ALLOCA(sz) __builtin_alloca(sz)
++	#define ATS_ALLOCA2(n, sz) __builtin_alloca((n)*(sz))
++#else
++	extern void *alloca(size_t nsz);
++
++	#define ATS_ALLOCA(sz) alloca(sz)
++	#define ATS_ALLOCA2(n, sz) alloca((n)*(sz))
++#endif
++
+ 
+ /* ****** ****** */
+ 
+diff --git a/src/CBOOT/libc/CATS/fcntl.cats b/src/CBOOT/libc/CATS/fcntl.cats
+index 26a4da0..b5682fc 100644
+--- a/src/CBOOT/libc/CATS/fcntl.cats
++++ b/src/CBOOT/libc/CATS/fcntl.cats
+@@ -47,8 +47,12 @@
+ //
+ // HX: functions declared in [unistd.h]
+ //
+-extern ssize_t read  (int fd, void *buf, size_t cnt) ;
+-extern ssize_t write  (int fd, const void *buf, size_t cnt) ;
++#if defined(_WIN32)
++	#include <io.h>
++#else
++	extern ssize_t read(int fd, void *buf, size_t cnt);
++	extern ssize_t write(int fd, const void *buf, size_t cnt);
++#endif
+ 
+ /* ****** ****** */
+ //
+@@ -207,6 +211,7 @@ atslib_fildes_write_substring_exn (
+ } // end of [ats_fildes_write_substring_exn]
+ 
+ /* ****** ****** */
++#if !defined(_WIN32)
+ 
+ ATSinline()
+ ats_fcntlflag_type
+@@ -220,6 +225,7 @@ atslib_fcntl_setfl (
+   return fcntl(fd, F_SETFL, flag) ;
+ } // end of [atslib_fcntl_setfl]
+ 
++#endif
+ /* ****** ****** */
+ 
+ #endif /* ATS_LIBC_FCNTL_CATS */
+diff --git a/src/CBOOT/libc/CATS/unistd.cats b/src/CBOOT/libc/CATS/unistd.cats
+index 4609643..ba17548 100644
+--- a/src/CBOOT/libc/CATS/unistd.cats
++++ b/src/CBOOT/libc/CATS/unistd.cats
+@@ -38,7 +38,9 @@
+ 
+ #include <errno.h>
+ #include <sys/types.h>
+-#include <sys/wait.h> // for [wait]
++#if !defined(_WIN32)
++	#include <sys/wait.h>
++#endif
+ #include <unistd.h>
+ 
+ /* ****** ****** */
+@@ -205,6 +207,8 @@ atslib_fildes_lseek_exn (
+ 
+ /* ****** ****** */
+ 
++#if !defined(_WIN32)
++
+ ATSinline()
+ ats_int_type
+ atslib_gethostname (
+@@ -233,6 +237,8 @@ atslib_getdomainname (
+ 
+ #define atslib_setdomainname setdomainname
+ 
++#endif
++
+ /* ****** ****** */
+ 
+ #define atslib_pause pause
+diff --git a/src/CBOOT/libc/sys/CATS/stat.cats b/src/CBOOT/libc/sys/CATS/stat.cats
+index 9ad5d8a..79c20da 100644
+--- a/src/CBOOT/libc/sys/CATS/stat.cats
++++ b/src/CBOOT/libc/sys/CATS/stat.cats
+@@ -74,14 +74,17 @@ ATSinline()
+ ats_bool_type
+ atslib_S_ISREG (ats_mode_type m) { return S_ISREG(m) ; }
+ 
+-ATSinline()
+-ats_bool_type
+-atslib_S_ISLNK (ats_mode_type m) { return S_ISLNK(m) ; }
+-
+-ATSinline()
+-ats_bool_type
+-atslib_S_ISSOCK (ats_mode_type m) { return S_ISSOCK(m) ; }
+-
++#if !defined(_WIN32)
++	ATSinline()
++	ats_bool_type
++	atslib_S_ISLNK (ats_mode_type m) { return S_ISLNK(m) ; }
++#endif
++
++#if !defined(_WIN32)
++	ATSinline()
++	ats_bool_type
++	atslib_S_ISSOCK (ats_mode_type m) { return S_ISSOCK(m) ; }
++#endif
+ /* ****** ****** */
+ 
+ #define atslib_chmod_err chmod
+@@ -94,8 +97,11 @@ atslib_S_ISSOCK (ats_mode_type m) { return S_ISSOCK(m) ; }
+ 
+ #define atslib_stat_err stat
+ #define atslib_fstat_err fstat
+-#define atslib_lstat_err lstat
+-
++#if defined(_WIN32)
++	#define atslib_lstat_err stat
++#else
++	#define atslib_lstat_err lstat
++#endif
+ /* ****** ****** */
+ 
+ #define atslib_umask umask
+@@ -106,6 +112,10 @@ atslib_S_ISSOCK (ats_mode_type m) { return S_ISSOCK(m) ; }
+ 
+ /* ****** ****** */
+ 
++#ifdef _WIN32
++extern int atslib_win_test_file_islnk(const char *path);
++#endif
++
+ #endif /* end of [ATS_LIBC_SYS_STAT_CATS] */
+ 
+ /* end of [stat.cats] */
+diff --git a/src/CBOOT/libc/sys/CATS/types.cats b/src/CBOOT/libc/sys/CATS/types.cats
+index cfd174d..c92fdb6 100644
+--- a/src/CBOOT/libc/sys/CATS/types.cats
++++ b/src/CBOOT/libc/sys/CATS/types.cats
+@@ -43,7 +43,11 @@
+ //
+ // typedef blksize_t ats_blksize_type ; // I/O block size
+ //
+-typedef blkcnt_t ats_blkcnt_type ; // number of blocks allowed
++#if defined(_WIN32)
++	typedef long long ats_blkcnt_type;
++#else
++	typedef blkcnt_t ats_blkcnt_type;
++#endif
+ 
+ /* ****** ****** */
+ //
+@@ -74,11 +78,23 @@ atslib_eq_dev_dev
+ 
+ /* ****** ****** */
+ 
+-typedef fsblkcnt_t ats_fsblkcnt_type ; // file system block counts
++#if defined(_WIN32)
++	typedef unsigned long long ats_fsblkcnt_type;
++#else
++	typedef fsblkcnt_t ats_fsblkcnt_type;
++#endif
+ 
+-typedef fsfilcnt_t ats_fsfilcnt_type ; // file system file counts
++#if defined(_WIN32)
++	typedef unsigned long long ats_fsfilcnt_type;
++#else
++	typedef fsfilcnt_t ats_fsfilcnt_type;
++#endif
+ 
+-typedef gid_t ats_gid_type ; // for group IDs
++#if defined(_WIN32)
++	typedef unsigned int ats_gid_type;
++#else
++	typedef gid_t ats_gid_type;
++#endif
+ 
+ /* ****** ****** */
+ 
+@@ -93,7 +109,11 @@ atslib_eq_ino_ino
+ 
+ /* ****** ****** */
+ 
+-typedef key_t ats_key_type ; // for XSI interprocess communication
++#if defined(_WIN32)
++	typedef int ats_key_type;
++#else
++	typedef key_t ats_key_type;
++#endif
+ 
+ /* ****** ****** */
+ 
+@@ -129,7 +149,11 @@ atslib_land_mode_mode
+ 
+ /* ****** ****** */
+ 
+-typedef nlink_t ats_nlink_type ; // number of hard links to a file
++#if defined(_WIN32)
++	typedef unsigned int ats_nlink_type;
++#else
++	typedef nlink_t ats_nlink_type;
++#endif
+ 
+ /* ****** ****** */
+ 
+@@ -193,7 +217,11 @@ typedef suseconds_t ats_suseconds_type ; // for signed time in microseconds
+ 
+ /* ****** ****** */
+ 
+-typedef uid_t ats_uid_type ;
++#if defined(_WIN32)
++	typedef unsigned int ats_uid_type;
++#else
++	typedef uid_t ats_uid_type;
++#endif
+ 
+ #if (0)
+ //
+diff --git a/src/CBOOT/libc/sys/CATS/wait.cats b/src/CBOOT/libc/sys/CATS/wait.cats
+index d3526f4..e444140 100644
+--- a/src/CBOOT/libc/sys/CATS/wait.cats
++++ b/src/CBOOT/libc/sys/CATS/wait.cats
+@@ -32,7 +32,7 @@
+ /* author: Hongwei Xi (hwxi AT cs DOT bu DOT edu) */
+ 
+ /* ****** ****** */
+-
++#if !defined(_WIN32)
+ #ifndef ATS_LIBC_SYS_WAIT_CATS
+ #define ATS_LIBC_SYS_WAIT_CATS
+ 
+@@ -113,5 +113,5 @@ atslib_wait_null () { return wait((int*)0) ; }
+ /* ****** ****** */
+ 
+ #endif /* end of [ATS_LIBC_SYS_WAIT_CATS] */
+-
++#endif /* !_WIN32 */
+ /* end of [wait.cats] */
+diff --git a/src/CBOOT/prelude/DATS_filebas_dats.c b/src/CBOOT/prelude/DATS_filebas_dats.c
+index a37492d..8d1bb5c 100644
+--- a/src/CBOOT/prelude/DATS_filebas_dats.c
++++ b/src/CBOOT/prelude/DATS_filebas_dats.c
+@@ -523,6 +523,11 @@ ATSlocal (ats_bool_type, tmp45) ;
+ ATSlocal (ats_mode_type, tmp46) ;
+ 
+ __ats_lab_ATS_2d0_2e2_2e12_2prelude_2SATS_2filebas_2esats__test_file_islnk:
++/* patched */
++#if defined(_WIN32)
++	return atslib_win_test_file_islnk((const char *)arg0);
++#else
++
+ /* ats_stat_type tmp42 ; */
+ tmp43 = atslib_lstat_err (arg0, (&tmp42)) ;
+ tmp44 = atspre_ieq (tmp43, 0) ;
+@@ -538,8 +543,8 @@ tmp41 = 0 ;
+ tmp41 = -1 ;
+ } /* end of [if] */
+ return (tmp41) ;
++#endif
+ } /* end of [ATS_2d0_2e2_2e12_2prelude_2SATS_2filebas_2esats__test_file_islnk] */
+-
+ /*
+ // /nix/store/rfja8ixrs5wb4kj3kiwlch1apnh7qgvy-ats-0.2.12/lib/ats-anairiats-0.2.12/prelude/DATS/filebas.dats: 7224(line=290, offs=5) -- 7714(line=314, offs=4)
+ */

@@ -1,0 +1,155 @@
+--- a/libats/libc/CATS/sys/socket.cats
++++ b/libats/libc/CATS/sys/socket.cats
+@@ -41,8 +41,37 @@
+ ATSLIB_LIBATS_LIBC_CATS_SYS_SOCKET
+ 
+ #if defined(_WIN32)
+-#error "ATS2 legacy sys/socket uses int socket handles; use compat/net/ats2_net_socket.h"
++/* The API exposes int descriptors: map them to generation-tagged virtual IDs.
++ * They must not be passed to the Windows CRT read/write/close functions. */
++#include "ats2_legacy_socket.h"
++typedef int socklen_t;
++#define SHUT_RD SD_RECEIVE
++#define SHUT_WR SD_SEND
++#define SHUT_RDWR SD_BOTH
++#define ATS2_LEGACY_CALL_socket(af,tp,proto) ats2_legacy_socket_open((af),(tp),(proto))
++#define ATS2_LEGACY_CALL_bind(fd,sa,len) ats2_legacy_socket_bind((fd),(const struct sockaddr*)(sa),(len))
++#define ATS2_LEGACY_CALL_listen(fd,n) ats2_legacy_socket_listen((fd),(n))
++#define ATS2_LEGACY_CALL_connect(fd,sa,len) ats2_legacy_socket_connect((fd),(const struct sockaddr*)(sa),(len))
++#define ATS2_LEGACY_CALL_close(fd) ats2_legacy_socket_close((fd))
++#define ATS2_LEGACY_CALL_shutdown(fd,how) ats2_legacy_socket_shutdown((fd),(how))
++#define atslib_libats_libc_socket_AF_type(af,tp) ats2_legacy_socket_open((af),(tp),0)
++#define atslib_libats_libc_socket_PF_type(pf,tp) ats2_legacy_socket_open((pf),(tp),0)
++#define atslib_libats_libc_bind_err(fd,sa,len) ats2_legacy_socket_bind((fd),(const struct sockaddr*)(sa),(len))
++#define atslib_libats_libc_listen_err(fd,n) ats2_legacy_socket_listen((fd),(n))
++#define atslib_libats_libc_connect_err(fd,sa,len) ats2_legacy_socket_connect((fd),(const struct sockaddr*)(sa),(len))
++#define atslib_libats_libc_accept_err(fd,sa,len) ats2_legacy_socket_accept((fd),(struct sockaddr*)(sa),(int*)(len))
++#define atslib_libats_libc_accept_null_err(fd) ats2_legacy_socket_accept((fd),NULL,NULL)
++#define atslib_libats_libc_socket_close(fd) ats2_legacy_socket_close((fd))
++#define atslib_libats_libc_shutdown(fd,how) ats2_legacy_socket_shutdown((fd),(how))
++#define atslib_libats_libc_socket_read(fd,buf,n) ats2_legacy_socket_read((fd),(buf),(n))
++#define atslib_libats_libc_socket_write(fd,buf,n) ats2_legacy_socket_write((fd),(buf),(n))
+ #else
++#define ATS2_LEGACY_CALL_socket(af,tp,proto) socket((af),(tp),(proto))
++#define ATS2_LEGACY_CALL_bind(fd,sa,len) bind((fd),(const struct sockaddr*)(sa),(len))
++#define ATS2_LEGACY_CALL_listen(fd,n) listen((fd),(n))
++#define ATS2_LEGACY_CALL_connect(fd,sa,len) connect((fd),(const struct sockaddr*)(sa),(len))
++#define ATS2_LEGACY_CALL_close(fd) close((fd))
++#define ATS2_LEGACY_CALL_shutdown(fd,how) shutdown((fd),(how))
+ 
+ /* ****** ****** */
+ //
+--- a/libats/libc/CATS/sys/socket_in.cats
++++ b/libats/libc/CATS/sys/socket_in.cats
+@@ -41,7 +41,19 @@
+ ATSLIB_LIBATS_LIBC_CATS_SYS_SOCKET_IN
+ 
+ #if defined(_WIN32)
+-#error "ATS2 legacy sys/socket_in uses int socket handles; use compat/net/ats2_net_socket.h"
++#include "ats2_legacy_socket.h"
++#include <string.h>
++/* ATS2's Windows socket_in uses WinSock's sockaddr_in layout. */
++ATSinline()
++atsvoid_t0ype
++atslib_libats_libc_sockaddr_in_init(atstype_ptr sa, sa_family_t af, in_addr_t inp, in_port_t port)
++{
++  struct sockaddr_in *addr = (struct sockaddr_in *)sa;
++  (void)memset(addr, 0, sizeof(*addr));
++  addr->sin_family = af;
++  addr->sin_addr.s_addr = inp;
++  addr->sin_port = port;
++}
+ #else
+ 
+ /* ****** ****** */
+--- a/libats/libc/CATS/netinet/in.cats
++++ b/libats/libc/CATS/netinet/in.cats
+@@ -40,8 +40,12 @@
+ 
+ /* ****** ****** */
+ //
++#ifdef _WIN32
++#include "ats2_legacy_socket.h"
++#else
+ #include <arpa/inet.h>
+ #include <netinet/in.h>
++#endif
+ //
+ /* ****** ****** */
+ //
+--- a/libats/libc/DATS/sys/socket.dats
++++ b/libats/libc/DATS/sys/socket.dats
+@@ -69,7 +69,7 @@
+ ) {
+   int
+   fildes;
+-  fildes = socket(af, tp, 0);
++  fildes = ATS2_LEGACY_CALL_socket(af, tp, 0);
+   if(0 > fildes) ATSLIBfailexit("socket") ; // HX: failure
+   return fildes;
+ } // end of [atslib_libats_libc_socket_AF_type_exn]
+@@ -87,7 +87,7 @@
+ ) {
+   int
+   err;
+-  err = bind(fd, addr, addrlen);
++  err = ATS2_LEGACY_CALL_bind(fd, addr, addrlen);
+   if(0 > err) ATSLIBfailexit("bind") ; // HX: failure
+   return;
+ } // end of [atslib_libats_libc_bind_exn]
+@@ -104,7 +104,7 @@
+ ) {
+   int
+   err;
+-  err = listen(fd, nq);
++  err = ATS2_LEGACY_CALL_listen(fd, nq);
+   if(0 > err) ATSLIBfailexit("listen") ; // HX: failure
+   return;
+ } // end of [atslib_libats_libc_listen_exn]
+@@ -122,7 +122,7 @@
+ ) {
+   int
+   err;
+-  err = connect(fd, addr, addrlen);
++  err = ATS2_LEGACY_CALL_connect(fd, addr, addrlen);
+   if(0 > err) ATSLIBfailexit("connect") ; // HX: failure
+   return;
+ } // end of [atslib_libats_libc_connect_exn]
+@@ -139,7 +139,7 @@
+ ) {
+   int
+   err;
+-  err = close(fd);
++  err = ATS2_LEGACY_CALL_close(fd);
+   if(0 > err) ATSLIBfailexit("socket_close") ; // HX: failure
+   return;
+ } // end of [atslib_libats_libc_socket_close_exn]
+@@ -156,7 +156,7 @@
+ ) {
+   int
+   err;
+-  err = shutdown(fd, how);
++  err = ATS2_LEGACY_CALL_shutdown(fd, how);
+   if(0 > err) ATSLIBfailexit("shutdown") ; // HX: failure
+   return;
+ } // end of [atslib_libats_libc_shutdown_exn]
+--- a/libats/libc/DATS/sys/socket_in.dats
++++ b/libats/libc/DATS/sys/socket_in.dats
+@@ -71,7 +71,7 @@
+   int
+   err;
+   err =
+-  bind(
++  ATS2_LEGACY_CALL_bind(
+     fd, (const struct sockaddr*)addr, sizeof(struct sockaddr_in)
+   ); // end of [connent]
+   if(0 > err) ATSLIBfailexit("bind");
+@@ -91,7 +91,7 @@
+   int
+   err;
+   err =
+-  connect(
++  ATS2_LEGACY_CALL_connect(
+     fd, (const struct sockaddr*)addr, sizeof(struct sockaddr_in)
+   ); // end of [connent]
+   if(0 > err) ATSLIBfailexit("connect");

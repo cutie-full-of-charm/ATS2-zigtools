@@ -1,0 +1,122 @@
+--- a/src/pats_filename.dats
++++ b/src/pats_filename.dats
+@@ -1706,6 +1706,26 @@
+   return ats_false_bool;
+ }
+ 
++/* ATS internally uses '/' for lexical path normalization.  Win32 accepts
++ * both separators, so recognize both when finding the parent and normalize
++ * only freshly allocated path buffers (never mutate borrowed strings). */
++static int
++patsopt_filename_is_separator(char c, char dirsep) {
++#ifdef _WIN32
++  if (c == '\\') return 1;
++#endif
++  return c == dirsep;
++}
++
++static void
++patsopt_filename_normalize_separators(char *path) {
++#ifdef _WIN32
++  for (; *path; ++path) if (*path == '\\') *path = '/';
++#else
++  (void)path;
++#endif
++}
++
+ ats_ptr_type
+ patsopt_filename_merge
+ (
+@@ -1722,7 +1742,7 @@
+   while (1) {
+     c = *p++ ;
+     if (c == 0) break ;
+-    if (c == dirsep) { found = 1 ; p1 = p ; }
++    if (patsopt_filename_is_separator(c, dirsep)) { found = 1 ; p1 = p ; }
+   }
+ //
+   n1 = 0 ;
+@@ -1733,6 +1753,7 @@
+   memcpy (fulbas, ful, n1) ;
+   memcpy (fulbas + n1, bas, n2) ;
+   fulbas[n] = '\000' ;
++  patsopt_filename_normalize_separators(fulbas) ;
+ //
+   return fulbas ;
+ //
+@@ -1752,12 +1773,13 @@
+   n2 = strlen ((char*)bas) ;
+   n = n1 + n2 ;
+ //
+-  if (n1 > 0 && ((char*)dir)[n1-1] != dirsep) n += 1 ;
++  if (n1 > 0 && !patsopt_filename_is_separator(((char*)dir)[n1-1], dirsep)) n += 1 ;
+   dirbas = ATS_MALLOC (n + 1) ;
+   memcpy (dirbas, dir, n1) ;
+   if (n > n1 + n2) { dirbas[n1] = dirsep ; n1 += 1 ; }
+   memcpy (dirbas + n1, bas, n2) ;
+   dirbas[n] = '\000' ;
++  patsopt_filename_normalize_separators(dirbas) ;
+ //
+   return dirbas ;
+ } /* end of [patsopt_filename_dirbase] */
+--- a/src/CBOOT/pats_filename_dats.c
++++ b/src/CBOOT/pats_filename_dats.c
+@@ -3019,6 +3019,26 @@
+   return ats_false_bool;
+ }
+ 
++/* ATS internally uses '/' for lexical path normalization.  Win32 accepts
++ * both separators, so recognize both when finding the parent and normalize
++ * only freshly allocated path buffers (never mutate borrowed strings). */
++static int
++patsopt_filename_is_separator(char c, char dirsep) {
++#ifdef _WIN32
++  if (c == '\\') return 1;
++#endif
++  return c == dirsep;
++}
++
++static void
++patsopt_filename_normalize_separators(char *path) {
++#ifdef _WIN32
++  for (; *path; ++path) if (*path == '\\') *path = '/';
++#else
++  (void)path;
++#endif
++}
++
+ ats_ptr_type
+ patsopt_filename_merge
+ (
+@@ -3035,7 +3055,7 @@
+   while (1) {
+     c = *p++ ;
+     if (c == 0) break ;
+-    if (c == dirsep) { found = 1 ; p1 = p ; }
++    if (patsopt_filename_is_separator(c, dirsep)) { found = 1 ; p1 = p ; }
+   }
+ //
+   n1 = 0 ;
+@@ -3046,6 +3066,7 @@
+   memcpy (fulbas, ful, n1) ;
+   memcpy (fulbas + n1, bas, n2) ;
+   fulbas[n] = '\000' ;
++  patsopt_filename_normalize_separators(fulbas) ;
+ //
+   return fulbas ;
+ //
+@@ -3065,12 +3086,13 @@
+   n2 = strlen ((char*)bas) ;
+   n = n1 + n2 ;
+ //
+-  if (n1 > 0 && ((char*)dir)[n1-1] != dirsep) n += 1 ;
++  if (n1 > 0 && !patsopt_filename_is_separator(((char*)dir)[n1-1], dirsep)) n += 1 ;
+   dirbas = ATS_MALLOC (n + 1) ;
+   memcpy (dirbas, dir, n1) ;
+   if (n > n1 + n2) { dirbas[n1] = dirsep ; n1 += 1 ; }
+   memcpy (dirbas + n1, bas, n2) ;
+   dirbas[n] = '\000' ;
++  patsopt_filename_normalize_separators(dirbas) ;
+ //
+   return dirbas ;
+ } /* end of [patsopt_filename_dirbase] */
