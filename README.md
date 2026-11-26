@@ -54,7 +54,11 @@ Drop-in usage on Linux:
 
 ```sh
 unset PATSHOME PATSHOMERELOC
-export PATH="full/path/to/ATS2-zigtools/zig-out/bin:$PATH"
+export ATS2_ROOT=/full/path/to/Projects/ATS2-zigtools/zig-out
+
+export PATSHOME="$ATS2_ROOT/share/ats2"
+export PATSHOMERELOC="$PATSHOME"
+export PATH="$ATS2_ROOT/bin:$PATH"
 ```
 
 ```sh
